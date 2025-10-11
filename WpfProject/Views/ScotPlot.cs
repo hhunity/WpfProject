@@ -1,14 +1,11 @@
 ﻿using ScottPlot;
-using ScottPlot;
 using ScottPlot.Plottables;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace WpfProject.Views
 {
@@ -19,34 +16,26 @@ namespace WpfProject.Views
         private int _dragIndex = -1;
 
         public bool DragEnabled { get; set; } = true;
-
-        /// <summary>ドラッグで X を固定したいとき true</summary>
-        public bool LockX { get; set; } = false;
-
-        /// <summary>ドラッグで Y を固定したいとき true</summary>
-        public bool LockY { get; set; } = false;
-
-        /// <summary>ドラッグ対象探索の許容ピクセル半径</summary>
         public int HitTestPixelRadius { get; set; } = 12;
 
-        /// <summary>点が動いたときに通知（インデックスと新座標）</summary>
         public event Action<int, double, double>? PointMoved;
 
+        // ダイアログで編集中のインデックス（疎結合でもどの点かはここで保持）
+        private int _editingIndex = -1;
 
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Shiftロックの状態
+        // （ロック関連は省略/残してOK）
         private enum LockMode { None, LockX, LockY }
         private LockMode _lockMode = LockMode.None;
-        private double _startPx, _startPy;       // 物理解像度のピクセル
-        private double _startX, _startY;         // データ座標
-        // Shfitロックここまで
-        ////////////////////////////////////////////////////////////////////////////////////////
+        private double _startPx, _startPy;
+        private double _startX, _startY;
 
         public ScotPlot()
         {
+            Background = Brushes.Transparent;
+            Focusable = true;
+
             Loaded += OnLoaded;
 
-            // 既定のパン/ズームよりも先に受け取って止める
             PreviewMouseDown += OnPreviewMouseDown;
             PreviewMouseMove += OnPreviewMouseMove;
             PreviewMouseUp += OnPreviewMouseUp;
@@ -69,7 +58,7 @@ namespace WpfProject.Views
                 var rnd = new Random(0);
                 var xs = Enumerable.Range(0, 20).Select(i => (double)i).ToArray();
                 var ys = xs.Select(_ => rnd.NextDouble() * 10).ToArray();
-                SetData(xs, ys, "Draggable Points (Shiftで水平/垂直ロック)");
+                SetData(xs, ys, "Double-Click to Edit (Wheel updates plot)");
             }
         }
 
@@ -83,10 +72,11 @@ namespace WpfProject.Views
             _scatter = Plot.Add.Scatter(_xs, _ys);
             _scatter.MarkerSize = 6;
             _scatter.LineWidth = 1.5F;
-            if (!string.IsNullOrWhiteSpace(title)) _scatter.LegendText = title;
+            if (!string.IsNullOrWhiteSpace(title)) _scatter.Label = title;
 
-            Plot.Title(title ?? "Draggable Scatter");
-            Plot.XLabel("X"); Plot.YLabel("Y");
+            Plot.Title(title ?? "ScotPlot");
+            Plot.XLabel("X");
+            Plot.YLabel("Y");
             Refresh();
         }
 
@@ -98,17 +88,24 @@ namespace WpfProject.Views
 
         private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (!DragEnabled || _scatter is null) return;
+            if (_scatter is null) return;
             if (e.LeftButton != MouseButtonState.Pressed) return;
 
-            var pos = e.GetPosition(this);
+            // ダブルクリック → 編集ダイアログ（弱イベントで購読）
+            if (e.ClickCount == 2)
+            {
+                TryOpenEditDialogAt(e);
+                e.Handled = true;
+                return;
+            }
 
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //startPx/_startPy はマウスのピクセル位置（実際の画面上の距離を比較用）。
+            if (!DragEnabled) return;
+
+            Focus(); Keyboard.Focus(this);
+
+            var pos = e.GetPosition(this);
             _startPx = pos.X * DisplayScale;
             _startPy = pos.Y * DisplayScale;
-            // どの点をドラッグするか決定    
-            ////////////////////////////////////////////////////////////////////////////////////////
 
             Coordinates mouse = Plot.GetCoordinates(new Pixel(_startPx, _startPy));
             var nearest = _scatter.Data.GetNearest(mouse, Plot.LastRender, HitTestPixelRadius);
@@ -116,17 +113,68 @@ namespace WpfProject.Views
 
             if (_dragIndex >= 0 && _xs is not null && _ys is not null)
             {
-                ////////////////////////////////////////////////////////////////////////////////////////
-                //_startX/_startY はそのときのデータ座標（ロック時に固定値として使う）。
                 _startX = _xs[_dragIndex];
                 _startY = _ys[_dragIndex];
-                ////////////////////////////////////////////////////////////////////////////////////////
 
-                _lockMode = LockMode.None; // 毎回リセット
+                _lockMode = LockMode.None;
                 Cursor = Cursors.SizeAll;
                 CaptureMouse();
-                e.Handled = true; // 既定のパン/ズームをブロック
+                e.Handled = true;
             }
+        }
+
+        private void TryOpenEditDialogAt(MouseEventArgs e)
+        {
+            if (_scatter is null || _xs is null || _ys is null) return;
+
+            var pos = e.GetPosition(this);
+            double px = pos.X * DisplayScale;
+            double py = pos.Y * DisplayScale;
+
+            Coordinates mouse = Plot.GetCoordinates(new Pixel(px, py));
+            var nearest = _scatter.Data.GetNearest(mouse, Plot.LastRender, HitTestPixelRadius);
+            int idx = nearest.IsReal ? nearest.Index : -1;
+            if (idx < 0) return;
+
+            _editingIndex = idx;
+
+            double curX = _xs[idx];
+            double curY = _ys[idx];
+
+            Point screenDevice = PointToScreen(pos);
+
+            var dlg = new PointEditWindow(curX, curY, screenDevice)
+            {
+                Owner = Window.GetWindow(this),
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Topmost = true
+            };
+
+            // ★ 疎結合: 弱イベント購読
+            System.Windows.WeakEventManager<PointEditWindow, PointValueChangedEventArgs>
+                .AddHandler(dlg, nameof(PointEditWindow.ValueChanged), OnDialogValueChanged);
+
+            dlg.Closed += (_, __) =>
+            {
+                // 購読解除 & 編集状態クリア
+                System.Windows.WeakEventManager<PointEditWindow, PointValueChangedEventArgs>
+                    .RemoveHandler(dlg, nameof(PointEditWindow.ValueChanged), OnDialogValueChanged);
+                _editingIndex = -1;
+            };
+
+            dlg.ShowDialog();
+        }
+
+        // ★ ここでダイアログのリアルタイム値変更を受けてプロット更新
+        private void OnDialogValueChanged(object? sender, PointValueChangedEventArgs e)
+        {
+            if (_editingIndex < 0 || _xs is null || _ys is null) return;
+
+            _xs[_editingIndex] = e.X;
+            _ys[_editingIndex] = e.Y;
+
+            Refresh();
+            PointMoved?.Invoke(_editingIndex, e.X, e.Y);
         }
 
         private void OnPreviewMouseMove(object sender, MouseEventArgs e)
@@ -138,50 +186,12 @@ namespace WpfProject.Views
             double px = pos.X * DisplayScale;
             double py = pos.Y * DisplayScale;
 
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Shiftロック判定（Excel風）: 押してる間はどちらかの軸に拘束
-            bool shift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-
-            if (!shift)
-            {
-                // Shiftを離したらロック解除
-                _lockMode = LockMode.None;
-            }
-            else if (_lockMode == LockMode.None)
-            {
-                // まだロック未決定 → ドラッグ方向の大きい方に決める（数ピクセルのヒステリシス推奨）
-                double dxPx = Math.Abs(px - _startPx);
-                double dyPx = Math.Abs(py - _startPy);
-
-                const double hysteresisPx = 3.0; // 小さい揺れで誤判定しない
-                if (dxPx > dyPx + hysteresisPx)
-                    _lockMode = LockMode.LockY; // 水平ドラッグ → Yのみ変化（X固定）
-                else if (dyPx > dxPx + hysteresisPx)
-                    _lockMode = LockMode.LockX; // 垂直ドラッグ → Xのみ変化（Y固定）
-                // ほぼ同じならまだ決めない（次のMoveで決まる）
-            }
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            // ピクセル→座標
             Coordinates mouse = Plot.GetCoordinates(new Pixel(px, py));
-
-            double newX = mouse.X;
-            double newY = mouse.Y;
-
-            // ロック適用
-            if (shift)
-            {
-                if (_lockMode == LockMode.LockX)      // 垂直ドラッグ → X固定
-                    newX = _startX;
-                else if (_lockMode == LockMode.LockY) // 水平ドラッグ → Y固定
-                    newY = _startY;
-            }
-
-            _xs[_dragIndex] = newX;
-            _ys[_dragIndex] = newY;
+            _xs[_dragIndex] = mouse.X;
+            _ys[_dragIndex] = mouse.Y;
 
             Refresh();
-            PointMoved?.Invoke(_dragIndex, newX, newY);
+            PointMoved?.Invoke(_dragIndex, _xs[_dragIndex], _ys[_dragIndex]);
             e.Handled = true;
         }
 
