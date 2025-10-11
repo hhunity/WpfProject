@@ -12,7 +12,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Orientation="Vertical">
-            <Button Content="ScotPlot" Command="{Binding ScotPlotCommand}" />
+            <Button Content="Lunch ScotPlot" Command="{Binding ScotPlotCommand}" />
         </StackPanel>
         <local:ScotPlotView Grid.Row="1"/>
     </Grid>
