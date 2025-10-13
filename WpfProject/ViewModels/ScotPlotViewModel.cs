@@ -110,5 +110,44 @@ namespace WpfProject.ViewModels
             var win = new CopyWindowView();
             win.ShowDialog();
         }
+
+        private GridLength _savedA, _savedB, _savedC;
+        private int? _expandedIndex = null; // null=誰も展開してない
+
+        [ObservableProperty] 
+        private GridLength rowAHeight = new(1, GridUnitType.Star);
+        
+        //[ObservableProperty] private GridLength rowBHeight = new(1, GridUnitType.Star);
+        //[ObservableProperty] private GridLength rowCHeight = new(1, GridUnitType.Star);
+
+        [RelayCommand]
+        private void Expand(string? parameter)
+        {
+            if (!int.TryParse(parameter, out int index)) return;
+
+            if (_expandedIndex == index)
+            {
+                RowAHeight = _savedA;
+                //RowBHeight = _savedB;
+                //RowCHeight = _savedC;
+                _expandedIndex = null;
+                return;
+            }
+
+            // 展開前のサイズを保存（Splitterでの手動調整も含めて復元できる）
+            _savedA = RowAHeight;
+            //_savedB = RowBHeight;
+            //_savedC = RowCHeight;
+
+
+            const double big = 4;
+            const double small = 1;
+
+            RowAHeight = new GridLength(index == 0 ? big : small, GridUnitType.Star);
+            //RowBHeight = new GridLength(index == 1 ? big : small, GridUnitType.Star);
+            //RowCHeight = new GridLength(index == 2 ? big : small, GridUnitType.Star);
+
+            _expandedIndex = index;
+        }
     }
 }
