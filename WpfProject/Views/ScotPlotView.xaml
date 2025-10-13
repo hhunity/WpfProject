@@ -10,95 +10,98 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Button Content="Copy" Grid.Row="0" Command="{Binding CopyBtnCommand}" />
-        <local:ScotPlot Grid.Row="1" x:Name="Plot" Margin="8"/>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <local:ScotPlot Grid.Column="0" x:Name="Plot" Margin="8"/>
+            
+            <!-- 折りたたみパネル -->
+            <Expander Grid.Column="1" IsExpanded="False" Margin="8,0,8,8" ExpandDirection="Right" >
+                <!-- <Expander.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Edit" FontWeight="SemiBold" Margin="0,4,8,4"/>
+                        <TextBlock Text="" Foreground="#888" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Expander.Header> -->
 
-        <!-- 折りたたみパネル -->
-        <Expander Grid.Row="2" IsExpanded="False" Margin="8,0,8,8">
-            <Expander.Header>
-                <!-- ボタン風ヘッダー（Spacing は使わず Margin で間隔調整） -->
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Edit" FontWeight="SemiBold" Margin="0,4,8,4"/>
-                    <TextBlock Text="" Foreground="#888" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Expander.Header>
+                <!-- ヘッダー行 + リスト本体を上下に配置 -->
+                <Border Padding="8" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Background="#FAFAFA">
+                    <DockPanel LastChildFill="True">
+                        <!-- テーブルヘッダ（ItemsControl.Header は使わない） -->
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Seg" FontWeight="Bold"/>
+                            <TextBlock Grid.Column="1" Text="X" FontWeight="Bold"/>
+                            <TextBlock Grid.Column="2" Text="Y" FontWeight="Bold"/>
+                        </Grid>
+                        <!-- 本体 -->
+                        <!-- 省略: 上のGrid/Expander等はそのまま -->
 
-            <!-- ヘッダー行 + リスト本体を上下に配置 -->
-            <Border Padding="8" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Background="#FAFAFA">
-                <DockPanel LastChildFill="True">
-                    <!-- テーブルヘッダ（ItemsControl.Header は使わない） -->
-                    <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="50"/>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="140"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="#" FontWeight="Bold"/>
-                        <TextBlock Grid.Column="1" Text="X" FontWeight="Bold"/>
-                        <TextBlock Grid.Column="2" Text="Y" FontWeight="Bold"/>
-                    </Grid>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding ElementName=Plot, Path=Points}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="30"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
 
-                    <!-- 本体 -->
-                    <!-- 省略: 上のGrid/Expander等はそのまま -->
+                                            <!-- # -->
+                                            <TextBlock Grid.Column="0" Text="{Binding Index}" VerticalAlignment="Center" Foreground="#666"/>
 
-                    <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding ElementName=Plot, Path=Points}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,2">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="30"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- # -->
-                                        <TextBlock Grid.Column="0" Text="{Binding Index}" VerticalAlignment="Center" Foreground="#666"/>
-
-                                        <!-- X列：読み取り専用 + ホイール + ▲/▼コマンド -->
-                                        <DockPanel Grid.Column="1">
-                                            <Grid DockPanel.Dock="Right" Width="Auto" Height="Auto" Margin="1,0,0,0">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition/>
-                                                    <RowDefinition/>
-                                                </Grid.RowDefinitions>
-                                                <RepeatButton Grid.Row="0" FontSize="8" Content="▲" Command="{Binding IncXCommand}"/>
-                                                <RepeatButton Grid.Row="1" FontSize="8" Content="▼" Command="{Binding DecXCommand}"/>
-                                            </Grid>
-                                            <TextBox Width="140" Height="26"
+                                            <!-- X列：読み取り専用 + ホイール + ▲/▼コマンド -->
+                                            <DockPanel Grid.Column="1">
+                                                <Grid DockPanel.Dock="Right" Width="Auto" Height="Auto" Margin="0,5,5,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition/>
+                                                        <RowDefinition/>
+                                                    </Grid.RowDefinitions>
+                                                    <RepeatButton Grid.Row="0" FontSize="8" Content="▲" Command="{Binding IncXCommand}"/>
+                                                    <RepeatButton Grid.Row="1" FontSize="8" Content="▼" Command="{Binding DecXCommand}"/>
+                                                </Grid>
+                                                <TextBox Width="50" Height="26" Margin="5,5,5,0"
                                  IsReadOnly="True"
-                                 Text="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
                                  HorizontalContentAlignment="Right"
                                  local:MouseWheelNudgeBehavior.IsEnabled="True"
                                  local:MouseWheelNudgeBehavior.Axis="X"/>
-                                        </DockPanel>
+                                            </DockPanel>
 
-                                        <!-- Y列 -->
-                                        <DockPanel Grid.Column="2">
-                                            <Grid DockPanel.Dock="Right" Width="Auto" Height="Auto" Margin="1,0,0,0">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition/>
-                                                    <RowDefinition/>
-                                                </Grid.RowDefinitions>
-                                                <RepeatButton Grid.Row="0" FontSize="8" Content="▲" Command="{Binding IncYCommand}"/>
-                                                <RepeatButton Grid.Row="1" FontSize="8" Content="▼" Command="{Binding DecYCommand}"/>
-                                            </Grid>
-                                            <TextBox Width="140" Height="26"
+                                            <!-- Y列 -->
+                                            <DockPanel Grid.Column="2">
+                                                <Grid DockPanel.Dock="Right" Width="Auto" Height="Auto" Margin="0,5,5,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition/>
+                                                        <RowDefinition/>
+                                                    </Grid.RowDefinitions>
+                                                    <RepeatButton Grid.Row="0" FontSize="8" Content="▲" Command="{Binding IncYCommand}"/>
+                                                    <RepeatButton Grid.Row="1" FontSize="8" Content="▼" Command="{Binding DecYCommand}"/>
+                                                </Grid>
+                                                <TextBox Width="50" Height="26"  Margin="5,5,5,0" 
                                  IsReadOnly="True"
-                                 Text="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
                                  HorizontalContentAlignment="Right"
                                  local:MouseWheelNudgeBehavior.IsEnabled="True"
                                  local:MouseWheelNudgeBehavior.Axis="Y"/>
-                                        </DockPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
-        </Expander>
+                                            </DockPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Expander>
+        </Grid>
     </Grid>
 </UserControl>

@@ -14,6 +14,8 @@ namespace WpfProject.ViewModels
         [RelayCommand]
         private void CopyBtn()
         {
+            var win = new CopyWindowView();
+            win.ShowDialog();
         }
     }
 }

@@ -1,0 +1,33 @@
+﻿<Window x:Class="WpfProject.Views.CopyWindowView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WpfProject.Views"
+        mc:Ignorable="d"
+        Title="CopyWindowView" Height="450" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <GroupBox Grid.Row="0" Header="oriinal" Margin="8">
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Open" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Copy" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
+                    <Button Content="Copy" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+        
+        <GroupBox Grid.Row="1" Header="destination" Margin="8">
+            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                <Button Content="Copy" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
+            </StackPanel>
+        </GroupBox>
+    </Grid>
+</Window>
