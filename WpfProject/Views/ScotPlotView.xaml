@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:WpfProject.Views"
+             xmlns:model="clr-namespace:WpfProject.ViewModels"
              mc:Ignorable="d"
              d:DesignWidth="800" d:DesignHeight="450">
     <Grid>
@@ -73,8 +74,8 @@
                                  IsReadOnly="True"
                                  Text="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
                                  HorizontalContentAlignment="Right"
-                                 local:MouseWheelNudgeBehavior.IsEnabled="True"
-                                 local:MouseWheelNudgeBehavior.Axis="X"/>
+                                 model:MouseWheelNudgeBehavior.IsEnabled="True"
+                                 model:MouseWheelNudgeBehavior.Axis="X"/>
                                             </DockPanel>
 
                                             <!-- Y列 -->
@@ -91,8 +92,8 @@
                                  IsReadOnly="True"
                                  Text="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
                                  HorizontalContentAlignment="Right"
-                                 local:MouseWheelNudgeBehavior.IsEnabled="True"
-                                 local:MouseWheelNudgeBehavior.Axis="Y"/>
+                                 model:MouseWheelNudgeBehavior.IsEnabled="True"
+                                 model:MouseWheelNudgeBehavior.Axis="Y"/>
                                             </DockPanel>
                                         </Grid>
                                     </DataTemplate>
