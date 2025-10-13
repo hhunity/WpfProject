@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -7,13 +8,6 @@ using System.Windows.Media;
 
 namespace WpfProject.Views
 {
-    public class PointValueChangedEventArgs : EventArgs
-    {
-        public double X { get; }
-        public double Y { get; }
-        public PointValueChangedEventArgs(double x, double y) { X = x; Y = y; }
-    }
-
     public class PointEditWindow : Window
     {
         // 固定サイズ（桁数で伸び縮みしない）
@@ -70,10 +64,13 @@ namespace WpfProject.Views
         private readonly Point _anchorScreenDevice;
         private const double Step = 0.1;
 
-        public event EventHandler<PointValueChangedEventArgs>? ValueChanged;
+        private readonly int _index;
+        private bool _suppress; // 内部更新時のループ防止
 
-        public PointEditWindow(double currentX, double currentY, Point anchorScreenDevice)
+        // ctor は (int index, double currentX, double currentY, Point anchorScreen)
+        public PointEditWindow(int index, double currentX, double currentY, Point anchorScreenDevice)
         {
+            _index = index;
             // ウィンドウ：半透明（矩形角は見せない＝内側Borderで角丸＆Clip）
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
@@ -156,14 +153,14 @@ namespace WpfProject.Views
             _tbX.ContextMenu = null; _tbY.ContextMenu = null;
 
             // ホイール
-            _tbX.PreviewMouseWheel += (s, e) => { ValueX = Nudge(ValueX, _tbX, e); RaiseNow(); };
-            _tbY.PreviewMouseWheel += (s, e) => { ValueY = Nudge(ValueY, _tbY, e); RaiseNow(); };
+            _tbX.PreviewMouseWheel += OnWheelX;
+            _tbY.PreviewMouseWheel += OnWheelY;
 
             // 上下（ボタンサイズは“Stretch”で自然に半分ずつ）
-            _xUp.Click += (_, __) => { ValueX += Step; SyncText(_tbX, ValueX); RaiseNow(); };
-            _xDown.Click += (_, __) => { ValueX -= Step; SyncText(_tbX, ValueX); RaiseNow(); };
-            _yUp.Click += (_, __) => { ValueY += Step; SyncText(_tbY, ValueY); RaiseNow(); };
-            _yDown.Click += (_, __) => { ValueY -= Step; SyncText(_tbY, ValueY); RaiseNow(); };
+            _xUp.Click += (_, __) => OnXStep(+1);
+            _xDown.Click += (_, __) => OnXStep(-1);
+            _yUp.Click += (_, __) => OnYStep(+1);
+            _yDown.Click += (_, __) => OnYStep(-1);
 
             _btnClose.Click += (_, __) => Close();
             PreviewKeyDown += (s, e) => { if (e.Key == Key.Escape) Close(); };
@@ -173,6 +170,26 @@ namespace WpfProject.Views
             {
                 if (e.Source is not TextBox && e.Source is not ButtonBase) DragMove();
             };
+            
+            WeakReferenceMessenger.Default.Register<PointAppliedMessage>(this, (_, m) =>
+            {
+                if (m.Index != _index) return;
+                if (!IsVisible) return; // 閉じかけは無視
+
+                Dispatcher.Invoke(() =>
+                {
+                    _suppress = true;
+                    try
+                    {
+                        ValueX = m.X; ValueY = m.Y;
+                        SyncText(_tbX, m.X);
+                        SyncText(_tbY, m.Y);
+                    }
+                    finally { _suppress = false; }
+                });
+            });
+
+            Closed += (_, __) => WeakReferenceMessenger.Default.Unregister<PointAppliedMessage>(this);
         }
 
         private static void StyleStepper(RepeatButton rb)
@@ -235,21 +252,59 @@ namespace WpfProject.Views
             return sp;
         }
 
-        private static void SyncText(TextBox tb, double val)
+        private void SyncText(TextBox? tb, double val)
         {
-            tb.Text = val.ToString("G", CultureInfo.InvariantCulture);
-            tb.CaretIndex = tb.Text.Length;
+            if (tb is null) return;
+            if (!tb.IsLoaded || !IsVisible) return; // ウィンドウ閉じ際の受信などを無視
+
+            if (!tb.Dispatcher.CheckAccess())
+            {
+                tb.Dispatcher.Invoke(() => SyncText(tb, val));
+                return;
+            }
+
+            _suppress = true;
+            try
+            {
+                tb.Text = val.ToString("G", CultureInfo.InvariantCulture);
+                tb.CaretIndex = tb.Text.Length;
+            }
+            finally { _suppress = false; }
+        }
+        private void OnXStep(int dir)
+        {
+            ValueX += dir * Step;
+            SyncText(_tbX, ValueX);
+            RaiseNow();   // ScotPlot へ変更要求をMessengerで送る
         }
 
-        private double Nudge(double current, TextBox tb, MouseWheelEventArgs e)
+        private void OnYStep(int dir)
         {
-            current += (e.Delta > 0 ? Step : -Step);
-            SyncText(tb, current);
+            ValueY += dir * Step;
+            SyncText(_tbY, ValueY);
+            RaiseNow();
+        }
+
+        private void OnWheelX(object? s, MouseWheelEventArgs e)
+        {
+            ValueX += (e.Delta > 0 ? Step : -Step);
+            SyncText(_tbX, ValueX);
+            RaiseNow();
             e.Handled = true;
-            return current;
         }
 
-        private void RaiseNow() =>
-            ValueChanged?.Invoke(this, new PointValueChangedEventArgs(ValueX, ValueY));
+        private void OnWheelY(object? s, MouseWheelEventArgs e)
+        {
+            ValueY += (e.Delta > 0 ? Step : -Step);
+            SyncText(_tbY, ValueY);
+            RaiseNow();
+            e.Handled = true;
+        }
+
+        private void RaiseNow()
+        {
+            if (_suppress) return;
+            WeakReferenceMessenger.Default.Send(new PointChangedMessage(_index, ValueX, ValueY));
+        }
     }
 }

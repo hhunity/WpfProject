@@ -14,6 +14,6 @@
         <StackPanel Grid.Row="0" Orientation="Vertical">
             <Button Content="Lunch ScotPlot" Command="{Binding ScotPlotCommand}" />
         </StackPanel>
-        <local:ScotPlotView Grid.Row="1"/>
+        <local:ScotPlotView Grid.Row="2"/>
     </Grid>
 </Window>
