@@ -5,11 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfProject.Views"
         mc:Ignorable="d"
-        Title="CopyWindowView" Height="450" Width="800">
+        Title="CopyWindowView" Height="800" Width="800">
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <GroupBox Grid.Row="0" Header="oriinal" Margin="8">
@@ -17,16 +18,16 @@
                 <StackPanel Orientation="Horizontal">
                     <Button Content="Open" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="Copy" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
-                    <Button Content="Copy" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
-                </StackPanel>
+                <local:ScotPlot x:Name="Plot2" Height="300" Margin="8"/>
             </StackPanel>
         </GroupBox>
-        
-        <GroupBox Grid.Row="1" Header="destination" Margin="8">
-            <StackPanel Grid.Row="0" Orientation="Horizontal">
-                <Button Content="Copy" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
+        <Label Grid.Row="1" Content="↓" HorizontalAlignment="Center" FontSize="24" Margin="0,8,0,8"/>
+        <GroupBox Grid.Row="2" Header="destination" Margin="8">
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Open" Command="{Binding CopyBtnCommand}" Width="80" Margin="5,5,5,5"/>
+                </StackPanel>
+                <local:ScotPlot x:Name="Plot3" Height="300" Margin="8"/>
             </StackPanel>
         </GroupBox>
     </Grid>

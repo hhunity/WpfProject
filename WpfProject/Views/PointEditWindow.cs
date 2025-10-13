@@ -13,7 +13,7 @@ namespace WpfProject.Views
         // 固定サイズ（桁数で伸び縮みしない）
         private readonly TextBox _tbX = new()
         {
-            Width = 120,
+            Width  = 50,
             Height = 32,
             Margin = new Thickness(3),
             IsReadOnly = true,
@@ -28,7 +28,7 @@ namespace WpfProject.Views
 
         private readonly TextBox _tbY = new()
         {
-            Width = 120,
+            Width  = 50,
             Height = 32,
             Margin = new Thickness(3),
             IsReadOnly = true,
@@ -54,9 +54,9 @@ namespace WpfProject.Views
 
         // 上下（サイズは“Stretch”でGridの半分に自動フィット）
         private readonly RepeatButton _xUp = new() { Content = "▲" };
-        private readonly RepeatButton _xDown = new() { Content = "▼" };
-        private readonly RepeatButton _yUp = new() { Content = "▲" };
-        private readonly RepeatButton _yDown = new() { Content = "▼" };
+        private readonly RepeatButton _xDown = new() { Content = "▼"};
+        private readonly RepeatButton _yUp = new() { Content = "▲"};
+        private readonly RepeatButton _yDown = new() { Content = "▼"};
 
         public double ValueX { get; private set; }
         public double ValueY { get; private set; }
@@ -81,8 +81,8 @@ namespace WpfProject.Views
 
             // ← “ウィンドウを半透明に見せる”のは内側のPanelで実現
             //    こうすると角丸でも四隅の黒ずみやズレが出にくいです
-            Width = 210;
-            Height = 150;
+            Width  = 140;
+            Height = 140;
 
             ShowInTaskbar = false;
             WindowStartupLocation = WindowStartupLocation.Manual;
@@ -95,7 +95,7 @@ namespace WpfProject.Views
                 Background = new SolidColorBrush(Color.FromArgb(30, 80, 80, 80)), // 半透明ダーク
                 BorderBrush = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
                 BorderThickness = new Thickness(0.5),
-                Padding = new Thickness(10),
+                Padding = new Thickness(5),
                 SnapsToDevicePixels = true
             };
 
@@ -128,8 +128,8 @@ namespace WpfProject.Views
 
             // 値
             ValueX = currentX; ValueY = currentY;
-            _tbX.Text = currentX.ToString("G", CultureInfo.InvariantCulture);
-            _tbY.Text = currentY.ToString("G", CultureInfo.InvariantCulture);
+            _tbX.Text = currentX.ToString("F2", CultureInfo.InvariantCulture);
+            _tbY.Text = currentY.ToString("F2", CultureInfo.InvariantCulture);
 
             // クリック位置のすぐ横（DPI補正）
             Loaded += (_, __) =>
@@ -199,10 +199,12 @@ namespace WpfProject.Views
             rb.Background = new SolidColorBrush(Color.FromArgb(190, 235, 235, 235)); // 半透明
             rb.BorderBrush = new SolidColorBrush(Color.FromArgb(220, 100, 100, 100));
             rb.Foreground = Brushes.Black;
+            rb.FontSize = 8;
             rb.HorizontalContentAlignment = HorizontalAlignment.Center;
             rb.VerticalContentAlignment = VerticalAlignment.Center;
             rb.Delay = 250;
             rb.Interval = 35;
+            rb.Width = 20;
             // サイズは指定しない（Stretch でGrid行いっぱいに広がる）
         }
 
@@ -239,9 +241,9 @@ namespace WpfProject.Views
 
             // ボタンはStretch（行いっぱいに広がる＝高さは自動で半分ずつ）
             up.HorizontalAlignment = HorizontalAlignment.Stretch;
-            up.VerticalAlignment = VerticalAlignment.Stretch;
+            up.VerticalAlignment = VerticalAlignment.Center;
             down.HorizontalAlignment = HorizontalAlignment.Stretch;
-            down.VerticalAlignment = VerticalAlignment.Stretch;
+            down.VerticalAlignment = VerticalAlignment.Center;
 
             Grid.SetRow(up, 0);
             Grid.SetRow(down, 1);
@@ -266,7 +268,7 @@ namespace WpfProject.Views
             _suppress = true;
             try
             {
-                tb.Text = val.ToString("G", CultureInfo.InvariantCulture);
+                tb.Text = val.ToString("F2", CultureInfo.InvariantCulture);
                 tb.CaretIndex = tb.Text.Length;
             }
             finally { _suppress = false; }

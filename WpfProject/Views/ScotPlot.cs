@@ -121,6 +121,7 @@ namespace WpfProject.Views
         private int _editingIndex = -1;
 
         // （ロック関連は省略/残してOK）
+        private const double LockHysteresisPx = 3.0; // 誤判定防止（数pxの遊び）
         private enum LockMode { None, LockX, LockY }
         private LockMode _lockMode = LockMode.None;
         private double _startPx, _startPy;
@@ -330,15 +331,8 @@ namespace WpfProject.Views
                 Topmost = true
             };
 
-            // ★ 疎結合: 弱イベント購読
-            //System.Windows.WeakEventManager<PointEditWindow, PointValueChangedEventArgs>
-                //.AddHandler(dlg, nameof(PointEditWindow.ValueChanged), OnDialogValueChanged);
-
             dlg.Closed += (_, __) =>
             {
-                // 購読解除 & 編集状態クリア
-                //System.Windows.WeakEventManager<PointEditWindow, PointValueChangedEventArgs>
-                    //.RemoveHandler(dlg, nameof(PointEditWindow.ValueChanged), OnDialogValueChanged);
                 _editingIndex = -1;
             };
 
@@ -354,18 +348,45 @@ namespace WpfProject.Views
             double px = pos.X * DisplayScale;
             double py = pos.Y * DisplayScale;
 
+            // Shiftロックの判定
+            bool shift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+
+            if (!shift)
+            {
+                // Shiftを離したらロック解除
+                _lockMode = LockMode.None;
+            }
+            else if (_lockMode == LockMode.None)
+            {
+                // まだロック未決定 → どちらの移動が大きいかで決める（ヒステリシスあり）
+                double dxPx = Math.Abs(px - _startPx);
+                double dyPx = Math.Abs(py - _startPy);
+
+                if (dxPx > dyPx + LockHysteresisPx)
+                    _lockMode = LockMode.LockY; // 水平ドラッグ優勢 → Yのみ動かす（X固定）
+                else if (dyPx > dxPx + LockHysteresisPx)
+                    _lockMode = LockMode.LockX; // 垂直ドラッグ優勢 → Xのみ動かす（Y固定）
+                                                // ほぼ同じならまだ決めない（次のMoveで決まる）
+            }
+
+            // ピクセル→データ座標
             Coordinates mouse = Plot.GetCoordinates(new Pixel(px, py));
-            
-            //_xs[_dragIndex] = mouse.X;
-            //_ys[_dragIndex] = mouse.Y;
+            double newX = mouse.X;
+            double newY = mouse.Y;
 
-            Refresh();
-            //PointMoved?.Invoke(_dragIndex, _xs[_dragIndex], _ys[_dragIndex]);
+            // ロック適用（Shift押下中のみ）
+            if (shift)
+            {
+                if (_lockMode == LockMode.LockX)      // 垂直ドラッグ → X固定
+                    newX = _startX;
+                else if (_lockMode == LockMode.LockY) // 水平ドラッグ → Y固定
+                    newY = _startY;
+            }
 
-            UpdatePoint(_dragIndex, mouse.X, mouse.Y);
+            // 中央ゲートで制約＆反映
+            UpdatePoint(_dragIndex, newX, newY);
             e.Handled = true;
         }
-
         private void OnPreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
             if (_dragIndex >= 0)
