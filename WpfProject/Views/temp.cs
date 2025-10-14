@@ -1,3 +1,137 @@
+public partial class NumericStepper : UserControl
+{
+    // 再入防止フラグ
+    private bool _updatingFromTicks;
+    private bool _updatingFromValue;
+
+    public NumericStepper() => InitializeComponent();
+
+    // ===== Transform（前回どおり） =====
+    public static readonly DependencyProperty TransformProperty =
+        DependencyProperty.Register(
+            nameof(Transform),
+            typeof(INumericTransform),
+            typeof(NumericStepper),
+            new PropertyMetadata(new LinearTransform { Scale = 0.1, Offset = 0.0 },
+                (d, _) => ((NumericStepper)d).OnTransformChanged()));
+
+    public INumericTransform Transform
+    {
+        get => (INumericTransform)GetValue(TransformProperty);
+        set => SetValue(TransformProperty, value);
+    }
+
+    private void OnTransformChanged()
+    {
+        // 変換差替え時：現在の Ticks をクランプ → Value を再計算
+        CoerceValue(TicksProperty);
+        SyncFromTicks();
+    }
+
+    // ===== Ticks（★新規：TwoWayバインド可） =====
+    public static readonly DependencyProperty TicksProperty =
+        DependencyProperty.Register(
+            nameof(Ticks),
+            typeof(int),
+            typeof(NumericStepper),
+            new FrameworkPropertyMetadata(
+                0,
+                FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                OnTicksChanged,
+                CoerceTicks));
+
+    public int Ticks
+    {
+        get => (int)GetValue(TicksProperty);
+        set => SetValue(TicksProperty, value);
+    }
+
+    private static object CoerceTicks(DependencyObject d, object baseValue)
+    {
+        var c = (NumericStepper)d;
+        int t = (int)baseValue;
+
+        if (c.Transform?.DefaultMinTick is int min && t < min) t = min;
+        if (c.Transform?.DefaultMaxTick is int max && t > max) t = max;
+
+        return t;
+    }
+
+    private static void OnTicksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var c = (NumericStepper)d;
+        if (c._updatingFromValue) return; // 相互更新ループ防止
+
+        try
+        {
+            c._updatingFromTicks = true;
+            c.SyncFromTicks(); // ← Ticks → Value を再計算
+        }
+        finally { c._updatingFromTicks = false; }
+    }
+
+    // ===== Value（前回どおり：TwoWay & 変換で同期） =====
+    public static readonly DependencyProperty ValueProperty =
+        DependencyProperty.Register(
+            nameof(Value),
+            typeof(double),
+            typeof(NumericStepper),
+            new FrameworkPropertyMetadata(
+                0.0,
+                FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                OnValueChanged));
+
+    public double Value
+    {
+        get => (double)GetValue(ValueProperty);
+        set => SetValue(ValueProperty, value);
+    }
+
+    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var c = (NumericStepper)d;
+        if (c.Transform is null || c._updatingFromTicks) return;
+
+        // Value → Ticks（逆変換）して DP に反映
+        int newTicks = c.Transform.ToTicks((double)e.NewValue);
+        c._updatingFromValue = true;
+        try
+        {
+            c.SetCurrentValue(TicksProperty, newTicks); // CoerceTicks が効く
+        }
+        finally { c._updatingFromValue = false; }
+
+        // （必要なら ValueChanged ルーティングイベントもここで Raise）
+    }
+
+    // ===== ユーザー操作（▲/▼/ホイール）は Ticks を直接いじるだけ =====
+    private void OnUpClick(object s, RoutedEventArgs e)
+    {
+        SetCurrentValue(TicksProperty, Ticks + 1); // CoerceTicks 適用
+    }
+
+    private void OnDownClick(object s, RoutedEventArgs e)
+    {
+        SetCurrentValue(TicksProperty, Ticks - 1);
+    }
+
+    private void OnTextWheel(object s, MouseWheelEventArgs e)
+    {
+        SetCurrentValue(TicksProperty, Ticks + (e.Delta > 0 ? 1 : -1));
+        e.Handled = true;
+    }
+
+    // ===== Ticks → Value 再計算（Transform + 範囲は Ticks 側で保証済） =====
+    private void SyncFromTicks()
+    {
+        if (Transform is null) return;
+        double newVal = Transform.ToValue(Ticks);
+        SetCurrentValue(ValueProperty, newVal);
+    }
+}
+
+
+
 
 using System;
 using System.Windows;
