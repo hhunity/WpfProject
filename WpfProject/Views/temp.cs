@@ -1,3 +1,60 @@
+
+// NumericStepper.xaml.cs （クラス内に追加）
+
+// 1) ルーティングイベント登録
+public static readonly RoutedEvent ValueChangedEvent =
+    EventManager.RegisterRoutedEvent(
+        "ValueChanged",
+        RoutingStrategy.Bubble,
+        typeof(RoutedPropertyChangedEventHandler<double>),
+        typeof(NumericStepper));
+
+// 2) イベント アクセサ（XAMLで ValueChanged="..." を使えるように）
+public event RoutedPropertyChangedEventHandler<double> ValueChanged
+{
+    add => AddHandler(ValueChangedEvent, value);
+    remove => RemoveHandler(ValueChangedEvent, value);
+}
+
+// 3) 旧値・新値で発火するヘルパ
+private void RaiseValueChanged(double oldVal, double newVal)
+{
+    if (!Equals(oldVal, newVal))
+        RaiseEvent(new RoutedPropertyChangedEventArgs<double>(oldVal, newVal, ValueChangedEvent));
+}
+
+// OnValueChanged の最後に
+private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+{
+    var c = (NumericStepper)d;
+    if (c.Transform is null || c._updatingFromTicks) return;
+
+    int newTicks = c.Transform.ToTicks((double)e.NewValue);
+    c._updatingFromValue = true;
+    try
+    {
+        c.SetCurrentValue(TicksProperty, newTicks);
+    }
+    finally { c._updatingFromValue = false; }
+
+    // ここで発火
+    c.RaiseValueChanged((double)e.OldValue, (double)e.NewValue);
+}
+
+private void SyncFromTicks()
+{
+    if (Transform is null) return;
+    double oldVal = Value;
+    double newVal = Transform.ToValue(Ticks);
+    SetCurrentValue(ValueProperty, newVal);
+    RaiseValueChanged(oldVal, newVal);
+}
+
+
+
+
+
+
 public partial class NumericStepper : UserControl
 {
     private bool _isShiftPressed;
