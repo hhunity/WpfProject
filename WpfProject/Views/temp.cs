@@ -1,3 +1,153 @@
+
+using System;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+
+namespace WpfProject.Views
+{
+    public partial class NumericStepper : UserControl
+    {
+        private int _ticks;
+
+        public NumericStepper()
+        {
+            InitializeComponent();
+        }
+
+        //================= Transform =================
+        public static readonly DependencyProperty TransformProperty =
+            DependencyProperty.Register(
+                nameof(Transform),
+                typeof(INumericTransform),
+                typeof(NumericStepper),
+                new PropertyMetadata(
+                    new LinearTransform { Scale = 0.1, Offset = 0.0 },
+                    (d, _) => ((NumericStepper)d).SyncFromTicks()));
+
+        public INumericTransform Transform
+        {
+            get => (INumericTransform)GetValue(TransformProperty);
+            set => SetValue(TransformProperty, value);
+        }
+
+        //================= Value =================
+        public static readonly DependencyProperty ValueProperty =
+            DependencyProperty.Register(
+                nameof(Value),
+                typeof(double),
+                typeof(NumericStepper),
+                new FrameworkPropertyMetadata(
+                    0.0,
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                    OnValueChanged));
+
+        public double Value
+        {
+            get => (double)GetValue(ValueProperty);
+            set => SetValue(ValueProperty, value);
+        }
+
+        private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var c = (NumericStepper)d;
+            if (c.Transform == null) return;
+
+            c._ticks = c.Transform.ToTicks((double)e.NewValue);
+            c._ticks = c.ClampTicks(c._ticks); // ✅ tick範囲で制限
+
+            var args = new RoutedPropertyChangedEventArgs<double>(
+                (double)e.OldValue, (double)e.NewValue)
+            { RoutedEvent = ValueChangedEvent };
+            c.RaiseEvent(args);
+        }
+
+        //================= イベント =================
+        public static readonly RoutedEvent ValueChangedEvent =
+            EventManager.RegisterRoutedEvent(nameof(ValueChanged),
+                RoutingStrategy.Bubble,
+                typeof(RoutedPropertyChangedEventHandler<double>),
+                typeof(NumericStepper));
+
+        public event RoutedPropertyChangedEventHandler<double> ValueChanged
+        {
+            add => AddHandler(ValueChangedEvent, value);
+            remove => RemoveHandler(ValueChangedEvent, value);
+        }
+
+        //================= 操作 =================
+        private void OnUpClick(object sender, RoutedEventArgs e)
+        {
+            _ticks = ClampTicks(_ticks + 1);
+            SyncFromTicks();
+        }
+
+        private void OnDownClick(object sender, RoutedEventArgs e)
+        {
+            _ticks = ClampTicks(_ticks - 1);
+            SyncFromTicks();
+        }
+
+        private void OnTextWheel(object sender, MouseWheelEventArgs e)
+        {
+            _ticks += (e.Delta > 0 ? 1 : -1);
+            _ticks = ClampTicks(_ticks);
+            SyncFromTicks();
+            e.Handled = true;
+        }
+
+        private void SyncFromTicks()
+        {
+            if (Transform == null) return;
+
+            double newVal = Transform.ToValue(_ticks);
+            Value = newVal;
+        }
+
+        //================= 範囲クランプ =================
+        private int ClampTicks(int ticks)
+        {
+            if (Transform?.DefaultMinTick is int min && ticks < min) ticks = min;
+            if (Transform?.DefaultMaxTick is int max && ticks > max) ticks = max;
+            return ticks;
+        }
+    }
+}
+using System;
+
+namespace WpfProject.Views
+{
+    public class LinearTransform : INumericTransform
+    {
+        public double Scale { get; set; } = 0.1;
+        public double Offset { get; set; } = 0.0;
+
+        // tick範囲指定（任意）
+        public int? DefaultMinTick { get; set; } = 0;
+        public int? DefaultMaxTick { get; set; } = 100;
+
+        public double ToValue(int ticks) => ticks * Scale + Offset;
+        public int ToTicks(double value) => (int)Math.Round((value - Offset) / Scale);
+    }
+}
+namespace WpfProject.Views
+{
+    public interface INumericTransform
+    {
+        double ToValue(int ticks);
+        int ToTicks(double value);
+
+        // tick範囲（nullなら制限なし）
+        int? DefaultMinTick { get; }
+        int? DefaultMaxTick { get; }
+    }
+}
+
+
+
+
+
+
 using System;
 using System.Windows;
 using System.Windows.Controls;
