@@ -1,3 +1,50 @@
+public partial class NumericStepper : UserControl
+{
+    private bool _isShiftPressed;
+    private bool _updatingFromTicks;
+    private bool _updatingFromValue;
+
+    public NumericStepper()
+    {
+        InitializeComponent();
+
+        PreviewKeyDown += OnPreviewKeyDown;
+        PreviewKeyUp += OnPreviewKeyUp;
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            _isShiftPressed = true;
+    }
+
+    private void OnPreviewKeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            _isShiftPressed = false;
+    }
+
+    private int StepFactor => _isShiftPressed ? 10 : 1;
+
+    private void OnUpClick(object s, RoutedEventArgs e)
+    {
+        SetCurrentValue(TicksProperty, Ticks + StepFactor);
+    }
+
+    private void OnDownClick(object s, RoutedEventArgs e)
+    {
+        SetCurrentValue(TicksProperty, Ticks - StepFactor);
+    }
+
+    private void OnTextWheel(object s, MouseWheelEventArgs e)
+    {
+        SetCurrentValue(TicksProperty, Ticks + StepFactor * (e.Delta > 0 ? 1 : -1));
+        e.Handled = true;
+    }
+}
+
+
+
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
