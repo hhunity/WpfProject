@@ -14,6 +14,134 @@ namespace WpfProject.Views
             InitializeComponent();
         }
 
+        //================= Transform =================
+        public static readonly DependencyProperty TransformProperty =
+            DependencyProperty.Register(
+                nameof(Transform),
+                typeof(INumericTransform),
+                typeof(NumericStepper),
+                new PropertyMetadata(new LinearTransform { Scale = 0.1, Offset = 0.0 },
+                    (d, _) => ((NumericStepper)d).SyncFromTicks()));
+
+        public INumericTransform Transform
+        {
+            get => (INumericTransform)GetValue(TransformProperty);
+            set => SetValue(TransformProperty, value);
+        }
+
+        //================= Tick Range =================
+        public static readonly DependencyProperty MinTickProperty =
+            DependencyProperty.Register(nameof(MinTick), typeof(int), typeof(NumericStepper),
+                new PropertyMetadata(int.MinValue));
+
+        public static readonly DependencyProperty MaxTickProperty =
+            DependencyProperty.Register(nameof(MaxTick), typeof(int), typeof(NumericStepper),
+                new PropertyMetadata(int.MaxValue));
+
+        public int MinTick
+        {
+            get => (int)GetValue(MinTickProperty);
+            set => SetValue(MinTickProperty, value);
+        }
+
+        public int MaxTick
+        {
+            get => (int)GetValue(MaxTickProperty);
+            set => SetValue(MaxTickProperty, value);
+        }
+
+        //================= Value (double) =================
+        public static readonly DependencyProperty ValueProperty =
+            DependencyProperty.Register(
+                nameof(Value),
+                typeof(double),
+                typeof(NumericStepper),
+                new FrameworkPropertyMetadata(
+                    0.0,
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                    OnValueChanged));
+
+        public double Value
+        {
+            get => (double)GetValue(ValueProperty);
+            set => SetValue(ValueProperty, value);
+        }
+
+        private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var c = (NumericStepper)d;
+            if (c.Transform == null) return;
+
+            c._ticks = c.Transform.ToTicks((double)e.NewValue);
+            c._ticks = Math.Clamp(c._ticks, c.MinTick, c.MaxTick); // ← tick範囲でクランプ
+
+            var args = new RoutedPropertyChangedEventArgs<double>(
+                (double)e.OldValue, (double)e.NewValue)
+            { RoutedEvent = ValueChangedEvent };
+            c.RaiseEvent(args);
+        }
+
+        //================= イベント =================
+        public static readonly RoutedEvent ValueChangedEvent =
+            EventManager.RegisterRoutedEvent(nameof(ValueChanged),
+                RoutingStrategy.Bubble,
+                typeof(RoutedPropertyChangedEventHandler<double>),
+                typeof(NumericStepper));
+
+        public event RoutedPropertyChangedEventHandler<double> ValueChanged
+        {
+            add => AddHandler(ValueChangedEvent, value);
+            remove => RemoveHandler(ValueChangedEvent, value);
+        }
+
+        //================= 操作 =================
+        private void OnUpClick(object sender, RoutedEventArgs e)
+        {
+            _ticks = Math.Min(_ticks + 1, MaxTick);
+            SyncFromTicks();
+        }
+
+        private void OnDownClick(object sender, RoutedEventArgs e)
+        {
+            _ticks = Math.Max(_ticks - 1, MinTick);
+            SyncFromTicks();
+        }
+
+        private void OnTextWheel(object sender, MouseWheelEventArgs e)
+        {
+            _ticks += (e.Delta > 0 ? 1 : -1);
+            _ticks = Math.Clamp(_ticks, MinTick, MaxTick);
+            SyncFromTicks();
+            e.Handled = true;
+        }
+
+        private void SyncFromTicks()
+        {
+            if (Transform == null) return;
+
+            double newVal = Transform.ToValue(_ticks);
+            Value = newVal;
+        }
+    }
+}
+
+
+using System;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+
+namespace WpfProject.Views
+{
+    public partial class NumericStepper : UserControl
+    {
+        private int _ticks;
+
+        public NumericStepper()
+        {
+            InitializeComponent();
+        }
+
         //================= 変換 =================
         public static readonly DependencyProperty TransformProperty =
             DependencyProperty.Register(
