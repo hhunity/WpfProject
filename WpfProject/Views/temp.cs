@@ -7,35 +7,37 @@ namespace WpfProject.Views
 {
     public partial class NumericStepper : UserControl
     {
+        private int _ticks;
+
         public NumericStepper()
         {
             InitializeComponent();
         }
 
-        // ---- 内部カウンタ（整数で保持）----
-        private int _ticks;
-
-        // ---- 刻み幅（1tickの値）----
-        public static readonly DependencyProperty StepProperty =
+        //================= 変換 =================
+        public static readonly DependencyProperty TransformProperty =
             DependencyProperty.Register(
-                nameof(Step),
-                typeof(double),
+                nameof(Transform),
+                typeof(INumericTransform),
                 typeof(NumericStepper),
-                new PropertyMetadata(0.1, OnStepChanged));
+                new PropertyMetadata(
+                    new LinearTransform { Scale = 0.1, Offset = 0.0 }, // 既定の線形
+                    (d, _) => ((NumericStepper)d).OnTransformChanged()));
 
-        public double Step
+        public INumericTransform Transform
         {
-            get => (double)GetValue(StepProperty);
-            set => SetValue(StepProperty, value);
+            get => (INumericTransform)GetValue(TransformProperty);
+            set => SetValue(TransformProperty, value);
         }
 
-        private static void OnStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private void OnTransformChanged()
         {
-            var c = (NumericStepper)d;
-            c.CoerceValue(ValueProperty);
+            // 変換差し替え時にレンジや値を再評価
+            CoerceValue(ValueProperty);
+            SyncFromTicks();
         }
 
-        // ---- 表示/バインディング用のValue（double）----
+        //================= Value =================
         public static readonly DependencyProperty ValueProperty =
             DependencyProperty.Register(
                 nameof(Value),
@@ -56,10 +58,9 @@ namespace WpfProject.Views
         private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var c = (NumericStepper)d;
+            if (c.Transform == null) return;
 
-            // DPのValueが直接変更されたら内部ticksに反映
-            if (c.Step != 0)
-                c._ticks = (int)Math.Round((double)e.NewValue / c.Step);
+            c._ticks = c.Transform.ToTicks((double)e.NewValue);
 
             var args = new RoutedPropertyChangedEventArgs<double>(
                 (double)e.OldValue, (double)e.NewValue)
@@ -69,14 +70,21 @@ namespace WpfProject.Views
             c.RaiseEvent(args);
         }
 
-        // ---- 範囲 ----
+        //================= 最小/最大 =================
+        // ★ ポイント：既定値は NaN にして「未指定」を表現
         public static readonly DependencyProperty MinimumProperty =
-            DependencyProperty.Register(nameof(Minimum), typeof(double), typeof(NumericStepper),
-                new PropertyMetadata(double.NegativeInfinity, OnRangeChanged));
+            DependencyProperty.Register(
+                nameof(Minimum),
+                typeof(double),
+                typeof(NumericStepper),
+                new PropertyMetadata(double.NaN, OnRangeChanged));
 
         public static readonly DependencyProperty MaximumProperty =
-            DependencyProperty.Register(nameof(Maximum), typeof(double), typeof(NumericStepper),
-                new PropertyMetadata(double.PositiveInfinity, OnRangeChanged));
+            DependencyProperty.Register(
+                nameof(Maximum),
+                typeof(double),
+                typeof(NumericStepper),
+                new PropertyMetadata(double.NaN, OnRangeChanged));
 
         public double Minimum
         {
@@ -95,16 +103,35 @@ namespace WpfProject.Views
             ((NumericStepper)d).CoerceValue(ValueProperty);
         }
 
+        // Transform 既定と DP の明示指定をマージした“実効レンジ”
+        private (double min, double max) GetEffectiveRange()
+        {
+            double min =
+                double.IsNaN(Minimum)
+                ? (Transform?.DefaultMin ?? double.NegativeInfinity)
+                : Minimum;
+
+            double max =
+                double.IsNaN(Maximum)
+                ? (Transform?.DefaultMax ?? double.PositiveInfinity)
+                : Maximum;
+
+            if (min > max) (min, max) = (max, min); // 万一の入れ替え
+            return (min, max);
+        }
+
         private static object CoerceValueInternal(DependencyObject d, object baseValue)
         {
             var c = (NumericStepper)d;
+            var (min, max) = c.GetEffectiveRange();
+
             double v = (double)baseValue;
-            if (v < c.Minimum) v = c.Minimum;
-            if (v > c.Maximum) v = c.Maximum;
+            if (v < min) v = min;
+            if (v > max) v = max;
             return v;
         }
 
-        // ---- イベント ----
+        //================= イベント =================
         public static readonly RoutedEvent ValueChangedEvent =
             EventManager.RegisterRoutedEvent(nameof(ValueChanged),
                 RoutingStrategy.Bubble,
@@ -117,7 +144,7 @@ namespace WpfProject.Views
             remove => RemoveHandler(ValueChangedEvent, value);
         }
 
-        // ---- UI操作 ----
+        //================= UI操作 =================
         private void OnUpClick(object sender, RoutedEventArgs e)
         {
             _ticks++;
@@ -139,11 +166,73 @@ namespace WpfProject.Views
 
         private void SyncFromTicks()
         {
-            double newVal = _ticks * Step;
-            newVal = Math.Max(Minimum, Math.Min(Maximum, newVal));
+            if (Transform == null) return;
 
-            // DPに反映（＝INPC＋バインド更新＋テキスト表示も自動更新）
+            double newVal = Transform.ToValue(_ticks);
+
+            // 実効レンジでクランプ（Transform 既定 or DP指定）
+            var (min, max) = GetEffectiveRange();
+            if (newVal < min) newVal = min;
+            if (newVal > max) newVal = max;
+
             Value = newVal;
         }
     }
 }
+
+
+namespace WpfProject.Views
+{
+    public interface INumericTransform
+    {
+        double ToValue(int ticks);      // ticks → 表示値
+        int    ToTicks(double value);   // 表示値 → ticks
+
+        // 変換プロファイルに紐づく「表示値」の推奨最小/最大（未指定は null）
+        double? DefaultMin { get; }
+        double? DefaultMax { get; }
+    }
+}
+
+using System;
+
+namespace WpfProject.Views
+{
+    public class LinearTransform : INumericTransform
+    {
+        public double Scale  { get; set; } = 0.1;
+        public double Offset { get; set; } = 0.0;
+
+        // ここに“変換とセット”のレンジを持たせる
+        public double? DefaultMin { get; set; }  // 例: 0
+        public double? DefaultMax { get; set; }  // 例: 10
+
+        public double ToValue(int ticks) => ticks * Scale + Offset;
+        public int ToTicks(double value) => (int)Math.Round((value - Offset) / Scale);
+    }
+}
+
+<Window ...
+        xmlns:local="clr-namespace:WpfProject.Views">
+    <Window.Resources>
+        <local:LinearTransform x:Key="Volt10V" Scale="0.1" Offset="0"
+                               DefaultMin="0" DefaultMax="10"/>
+        <local:LinearTransform x:Key="TempC" Scale="0.5" Offset="-50"
+                               DefaultMin="-50" DefaultMax="150"/>
+    </Window.Resources>
+
+    <StackPanel Margin="16">
+        <!-- 0〜10V、0.1刻み -->
+        <local:NumericStepper Value="{Binding Voltage}"
+                              Transform="{StaticResource Volt10V}"/>
+
+        <!-- -50〜150℃、0.5刻み（Offset込み） -->
+        <local:NumericStepper Value="{Binding Temperature}"
+                              Transform="{StaticResource TempC}"
+                              Margin="0,12,0,0"/>
+    </StackPanel>
+</Window>
+
+<local:NumericStepper Value="{Binding Voltage}"
+                      Transform="{StaticResource Volt10V}"
+                      Maximum="8.5"/> <!-- ここだけ上書き -->
