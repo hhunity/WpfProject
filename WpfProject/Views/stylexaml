@@ -1,0 +1,44 @@
+<Window.Resources>
+    <!-- 押された状態を視覚的に示すボタンスタイル -->
+    <Style x:Key="PressableButton" TargetType="Button">
+        <Setter Property="Background" Value="#FFDDDDDD"/>
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="BorderBrush" Value="#FF888888"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="6,3"/>
+        <Setter Property="FontSize" Value="14"/>
+
+        <!-- マウスイベントなどの状態変化 -->
+        <Style.Triggers>
+            <!-- マウスが乗ったとき -->
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#FFEEEEEE"/>
+            </Trigger>
+
+            <!-- 押している最中 -->
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#FFAAAAAA"/>
+                <Setter Property="BorderBrush" Value="#FF666666"/>
+                <Setter Property="RenderTransform">
+                    <Setter.Value>
+                        <TranslateTransform Y="1"/> <!-- 押し込まれたような効果 -->
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+
+            <!-- フォーカスを持っているとき -->
+            <Trigger Property="IsFocused" Value="True">
+                <Setter Property="BorderBrush" Value="#FF3399FF"/>
+            </Trigger>
+
+            <!-- 無効化されているとき -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+</Window.Resources>
+
+<Grid>
+    <Button Style="{StaticResource PressableButton}" Content="押してみて" Width="120" Height="40" Margin="10"/>
+</Grid>
