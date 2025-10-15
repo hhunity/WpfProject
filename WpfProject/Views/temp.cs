@@ -1,49 +1,67 @@
-<ItemsControl ItemsSource="{Binding Toggles}">
-    <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-    </ItemsControl.ItemsPanel>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors">
 
-    <ItemsControl.ItemTemplate>
-        <DataTemplate DataType="{x:Type local:ToggleItem}">
-            <ToggleButton Content="{Binding Id}"
-                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
-                          Command="{Binding DataContext.ToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                <ToggleButton.CommandParameter>
-                    <MultiBinding Converter="{StaticResource ToggleParamConverter}">
-                        <Binding Path="IsChecked"/>
-                        <Binding Path="Id"/>
-                    </MultiBinding>
-                </ToggleButton.CommandParameter>
-            </ToggleButton>
-        </DataTemplate>
-    </ItemsControl.ItemTemplate>
-</ItemsControl>
+    <!-- 見た目だけ（基底） -->
+    <Style x:Key="ToggleVisual" TargetType="ToggleButton">
+        <Setter Property="Width" Value="110"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="#2E80FF"/>
+        <Setter Property="BorderBrush" Value="#1B5FCC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Bd"
+                            CornerRadius="6"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="#E0E5EB"/>
+                            <Setter TargetName="Bd" Property="BorderBrush"  Value="#9AA4AE"/>
+                            <Setter Property="Foreground" Value="#222"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.9"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
-// VM 側：表示したいトグルの一覧
-public ObservableCollection<ToggleItem> Toggles { get; } = new()
-{
-    new("A"), new("B"), new("C")
-};
-public record ToggleItem(string Id) { public bool? IsChecked { get; set; } }
+    <!-- 見た目＋ビヘイビア（派生） -->
+    <Style x:Key="ToggleWithBehavior" TargetType="ToggleButton"
+           BasedOn="{StaticResource ToggleVisual}">
+        <!-- ビヘイビア（Checked/Unchecked→Command） -->
+        <Setter Property="i:Interaction.Triggers">
+            <Setter.Value>
+                <i:EventTrigger EventName="Checked">
+                    <i:InvokeCommandAction Command="{Binding ToggleCommand}"
+                                           CommandParameter="{Binding Tag, RelativeSource={RelativeSource Self}}"/>
+                </i:EventTrigger>
+                <i:EventTrigger EventName="Unchecked">
+                    <i:InvokeCommandAction Command="{Binding ToggleCommand}"
+                                           CommandParameter="{Binding Tag, RelativeSource={RelativeSource Self}}"/>
+                </i:EventTrigger>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
-xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+</ResourceDictionary>
 
-<Style TargetType="ToggleButton" x:Key="ToggleWithBehaviors">
-    <Setter Property="Template"> ...（見た目はお好み）... </Setter>
-    <Setter Property="Tag" Value="{x:Null}"/>
-    <Setter Property="i:Interaction.Triggers">
-        <Setter.Value>
-            <i:EventTrigger EventName="Checked">
-                <i:InvokeCommandAction Command="{Binding ToggleCommand}"
-                                       CommandParameter="{Binding RelativeSource={RelativeSource Self}.AssociatedObject.Tag}"/>
-            </i:EventTrigger>
-            <i:EventTrigger EventName="Unchecked">
-                <i:InvokeCommandAction Command="{Binding ToggleCommand}"
-                                       CommandParameter="{Binding RelativeSource={RelativeSource Self}.AssociatedObject.Tag}"/>
-            </i:EventTrigger>
-        </Setter.Value>
-    </Setter>
-</Style>
+<!-- 見た目だけ適用（ビヘイビアなし） -->
+<ToggleButton Style="{StaticResource ToggleVisual}" Content="LED-A" Tag="LED-A" />
 
-<ToggleButton Style="{StaticResource ToggleWithBehaviors}" Content="A" Tag="A"/>
-<ToggleButton Style="{StaticResource ToggleWithBehaviors}" Content="B" Tag="B"/>
+<!-- 見た目＋ビヘイビアを適用（Checked/UncheckedでVMのコマンド呼ぶ） -->
+<ToggleButton Style="{StaticResource ToggleWithBehavior}" Content="LED-B" Tag="LED-B" />
+<ToggleButton Style="{StaticResource ToggleWithBehavior}" Content="LED-C" Tag="LED-C" />
