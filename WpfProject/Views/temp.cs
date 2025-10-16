@@ -1,4 +1,37 @@
 
+
+<Grid Margin="10">
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- 3行 × トグル群に合わせる -->
+    <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- 左ラベル列 -->
+    <TextBlock Grid.Row="0" Grid.Column="0" Text="Row 1" Margin="10"/>
+    <TextBlock Grid.Row="1" Grid.Column="0" Text="Row 2" Margin="10"/>
+    <TextBlock Grid.Row="2" Grid.Column="0" Text="Row 3" Margin="10"/>
+
+    <!-- 右 UniformGrid（RowSpan=3で全体を覆う） -->
+    <UniformGrid Grid.Column="1"
+                 Grid.RowSpan="3"
+                 Columns="8" Rows="3"
+                 HorizontalAlignment="Left"
+                 VerticalAlignment="Top">
+        <!-- ここにトグル24個 -->
+        <Border BorderBrush="#888" BorderThickness="0.5" Margin="-0.25">
+            <ToggleButton Content="1-1" Width="70" Height="40"/>
+        </Border>
+        <!-- ... -->
+    </UniformGrid>
+</Grid>
+
 <Grid>
     <!-- 左端ラベル -->
     <Grid.ColumnDefinitions>
