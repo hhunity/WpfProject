@@ -1,4 +1,42 @@
 
+<Grid>
+    <!-- 左端ラベル -->
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>  <!-- ラベル列 -->
+        <ColumnDefinition Width="*"/>     <!-- トグルボタン群 -->
+    </Grid.ColumnDefinitions>
+
+    <TextBlock Text="LED群"
+               FontSize="16"
+               FontWeight="Bold"
+               VerticalAlignment="Center"
+               Margin="10"
+               Grid.Column="0"/>
+
+    <ItemsControl Grid.Column="1"
+                  ItemsSource="{Binding Toggles}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <!-- 横8列×縦3行 -->
+                <UniformGrid Columns="8" Rows="3"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <ToggleButton Content="{Binding Label}"
+                              IsChecked="{Binding IsOn, Mode=TwoWay}"
+                              Width="70" Height="40"
+                              Margin="4"
+                              Command="{Binding DataContext.ToggleCommand,
+                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</Grid>
+
+
+
 <Style x:Key="ToggleWithBehavior" TargetType="ToggleButton"
        BasedOn="{StaticResource ToggleVisual}">
     <Setter Property="Template">
