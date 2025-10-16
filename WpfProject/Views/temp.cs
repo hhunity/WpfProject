@@ -1,3 +1,51 @@
+
+<Style x:Key="ToggleWithBehavior" TargetType="ToggleButton"
+       BasedOn="{StaticResource ToggleVisual}">
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="ToggleButton">
+                <Border x:Name="root" Background="{TemplateBinding Background}">
+                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <!-- ★ここに直接ビヘイビアを置く -->
+                    <i:Interaction.Triggers>
+                        <i:EventTrigger EventName="Checked">
+                            <i:InvokeCommandAction Command="{Binding ToggleCommand}"
+                                                   CommandParameter="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </i:EventTrigger>
+                        <i:EventTrigger EventName="Unchecked">
+                            <i:InvokeCommandAction Command="{Binding ToggleCommand}"
+                                                   CommandParameter="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </i:EventTrigger>
+                    </i:Interaction.Triggers>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter TargetName="root" Property="Background" Value="#2E80FF"/>
+                        <Setter Property="Foreground" Value="White"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
+
+
+using CommunityToolkit.Mvvm.Input;
+using System.Windows.Input;
+
+public class MainViewModel
+{
+    public ICommand ToggleCommand => new RelayCommand<object?>(param =>
+    {
+        var id = param?.ToString();
+        // ここでは ON/OFF はイベント側で区別される（Checked / Unchecked）
+        // 必要なら View 側で IsChecked も渡す（下に例あり）
+        System.Diagnostics.Debug.WriteLine($"Toggle: {id}");
+    });
+}
+
+
+
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
