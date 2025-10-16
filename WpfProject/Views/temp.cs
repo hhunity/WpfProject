@@ -1,4 +1,67 @@
 
+<ItemsControl ItemsSource="{Binding Rows}">
+    <ItemsControl.ItemTemplate>
+        <DataTemplate>
+            <StackPanel Orientation="Horizontal" Margin="4">
+                <!-- 左のラベル -->
+                <TextBlock Text="{Binding Label}"
+                           Width="80"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+
+                <!-- 右のトグル群 -->
+                <ItemsControl ItemsSource="{Binding Toggles}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="8"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#999" BorderThickness="0.5">
+                                <ToggleButton Content="{Binding Label}"
+                                              IsChecked="{Binding IsOn, Mode=TwoWay}"
+                                              Width="70" Height="40" Margin="2"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+    </ItemsControl.ItemTemplate>
+</ItemsControl>
+
+public class ToggleItem
+{
+    public string Label { get; set; }
+    public bool IsOn { get; set; }
+}
+
+public class ToggleRow
+{
+    public string Label { get; set; }           // "Row 1" など
+    public ObservableCollection<ToggleItem> Toggles { get; } = new();
+}
+
+public class MainViewModel
+{
+    public ObservableCollection<ToggleRow> Rows { get; } = new();
+
+    public MainViewModel()
+    {
+        for (int r = 1; r <= 3; r++)
+        {
+            var row = new ToggleRow { Label = $"Row {r}" };
+            for (int c = 1; c <= 8; c++)
+                row.Toggles.Add(new ToggleItem { Label = $"{r}-{c}" });
+            Rows.Add(row);
+        }
+    }
+}
+
+
+
 
 <Grid Margin="10">
     <Grid.ColumnDefinitions>
