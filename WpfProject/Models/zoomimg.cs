@@ -15,6 +15,75 @@ public Form1()
     vScroll.Scroll += (_, __) => { viewY = ScrollToImageY(vScroll.Value); panelView.Invalidate(); };
 }
 
+private const int ScrollMax = 100000;
+
+private void UpdateScrollbars()
+{
+    if (image == null) return;
+
+    int viewWImg = Math.Max(1, panelView.ClientSize.Width / zoom);
+    int viewHImg = Math.Max(1, panelView.ClientSize.Height / zoom);
+
+    int maxX = Math.Max(0, image.Width - viewWImg);
+    int maxY = Math.Max(0, image.Height - viewHImg);
+
+    // スクロール範囲が無いなら無効化
+    hScroll.Enabled = maxX > 0;
+    vScroll.Enabled = maxY > 0;
+
+    hScroll.Minimum = 0;
+    vScroll.Minimum = 0;
+
+    hScroll.Maximum = ScrollMax;
+    vScroll.Maximum = ScrollMax;
+
+    hScroll.LargeChange = Math.Max(1, ScrollMax / 10);
+    vScroll.LargeChange = Math.Max(1, ScrollMax / 10);
+
+    hScroll.Value = ImageXToScroll(viewX);
+    vScroll.Value = ImageYToScroll(viewY);
+}
+
+private int ImageXToScroll(int x)
+{
+    int viewWImg = Math.Max(1, panelView.ClientSize.Width / zoom);
+    int maxX = Math.Max(0, image.Width - viewWImg);
+    if (maxX == 0) return 0;
+
+    long v = (long)x * ScrollMax / maxX;
+    return (int)Math.Clamp(v, 0, ScrollMax);
+}
+
+private int ImageYToScroll(int y)
+{
+    int viewHImg = Math.Max(1, panelView.ClientSize.Height / zoom);
+    int maxY = Math.Max(0, image.Height - viewHImg);
+    if (maxY == 0) return 0;
+
+    long v = (long)y * ScrollMax / maxY;
+    return (int)Math.Clamp(v, 0, ScrollMax);
+}
+
+private int ScrollToImageX(int s)
+{
+    int viewWImg = Math.Max(1, panelView.ClientSize.Width / zoom);
+    int maxX = Math.Max(0, image.Width - viewWImg);
+    if (maxX == 0) return 0;
+
+    long x = (long)s * maxX / ScrollMax;
+    return (int)Math.Clamp(x, 0, maxX);
+}
+
+private int ScrollToImageY(int s)
+{
+    int viewHImg = Math.Max(1, panelView.ClientSize.Height / zoom);
+    int maxY = Math.Max(0, image.Height - viewHImg);
+    if (maxY == 0) return 0;
+
+    long y = (long)s * maxY / ScrollMax;
+    return (int)Math.Clamp(y, 0, maxY);
+}
+
 private void LoadImage(string path)
 {
     image?.Dispose();
