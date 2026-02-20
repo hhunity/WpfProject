@@ -1,3 +1,50 @@
+private void SetZoomAtPoint(int newZoom, int mouseX, int mouseY)
+{
+    if (image == null) return;
+    if (newZoom < 1) newZoom = 1;
+
+    // 画面座標(mouseX,mouseY)が指している画像座標（ズーム前）
+    double anchorImgX = viewX + (double)mouseX / zoom;
+    double anchorImgY = viewY + (double)mouseY / zoom;
+
+    // ズーム更新
+    zoom = newZoom;
+
+    // ズーム後も同じ画像座標が mouseX/mouseY に来るように viewX/Y を調整
+    viewX = (int)Math.Round(anchorImgX - (double)mouseX / zoom);
+    viewY = (int)Math.Round(anchorImgY - (double)mouseY / zoom);
+
+    ClampView();
+    UpdateScrollbarsFromView();
+    panelView.Invalidate();
+}
+
+private void panelView_MouseWheel(object sender, MouseEventArgs e)
+{
+    if (image == null) return;
+
+    // 例：Shift+Wheel でズーム（Ctrlは水平移動に使ってる前提）
+    bool shift = (Control.ModifierKeys & Keys.Shift) != 0;
+    bool ctrl  = (Control.ModifierKeys & Keys.Control) != 0;
+
+    if (shift)
+    {
+        int newZoom = zoom;
+
+        if (e.Delta > 0) newZoom = NextZoomIn(zoom);   // 1->2->4...
+        else             newZoom = NextZoomOut(zoom);  // 4->2->1...
+
+        SetZoomAtPoint(newZoom, e.X, e.Y);
+        return;
+    }
+
+    // 既存仕様：Ctrl+Wheelで水平、通常で垂直
+    ScrollByWheel(e);
+}
+
+
+
+
 public Form1()
 {
     InitializeComponent();
