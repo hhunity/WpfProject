@@ -1,3 +1,70 @@
+private bool isPanning = false;
+private Point panStartMouse;   // panel座標
+private int panStartViewX;     // 画像座標
+private int panStartViewY;
+private void panelView_MouseDown(object sender, MouseEventArgs e)
+{
+    if (image == null) return;
+
+    if (e.Button == MouseButtons.Left)
+    {
+        isPanning = true;
+        panStartMouse = e.Location;
+        panStartViewX = viewX;
+        panStartViewY = viewY;
+
+        panelView.Cursor = Cursors.Hand;
+        panelView.Capture = true; // 重要：外に出ても追跡
+    }
+}
+private void panelView_MouseMove(object sender, MouseEventArgs e)
+{
+    if (image == null) return;
+
+    lastMouse = e.Location; // 既存のクロスヘア用（必要なら）
+
+    if (isPanning)
+    {
+        int dx = e.X - panStartMouse.X;
+        int dy = e.Y - panStartMouse.Y;
+
+        // マウスを右に動かしたら画像は左へ、なので viewX は減らす
+        viewX = panStartViewX - dx / zoom;
+        viewY = panStartViewY - dy / zoom;
+
+        ClampView();
+        UpdateScrollbarsFromView();
+
+        // Invalidate連打でちらつくなら RequestRepaint() に置換
+        panelView.Invalidate();
+        return;
+    }
+
+    // ここに座標表示など（既にあるならそのまま）
+    int imgX = viewX + e.X / zoom;
+    int imgY = viewY + e.Y / zoom;
+    labelCoord.Text = $"X={imgX}, Y={imgY} (Zoom {zoom}x)";
+    panelView.Invalidate();
+}
+
+private void panelView_MouseUp(object sender, MouseEventArgs e)
+{
+    if (e.Button == MouseButtons.Left && isPanning)
+    {
+        isPanning = false;
+        panelView.Cursor = Cursors.Default;
+        panelView.Capture = false;
+    }
+}
+panelView.MouseDown += panelView_MouseDown;
+panelView.MouseMove += panelView_MouseMove;
+panelView.MouseUp   += panelView_MouseUp;
+
+
+
+
+
+
 private void panelView_MouseMove(object sender, MouseEventArgs e)
 {
     if (image == null) return;
