@@ -1,3 +1,46 @@
+private void panelView_MouseMove(object sender, MouseEventArgs e)
+{
+    if (image == null) return;
+
+    int imgX = viewX + e.X / zoom;
+    int imgY = viewY + e.Y / zoom;
+
+    // 範囲チェック
+    if (imgX < 0 || imgY < 0 || imgX >= image.Width || imgY >= image.Height)
+    {
+        labelCoord.Text = "(out)";
+        return;
+    }
+
+    labelCoord.Text = $"X={imgX}, Y={imgY}";
+}
+
+private unsafe bool GetBit1bpp(Bitmap bmp, int x, int y)
+{
+    var rect = new Rectangle(0, y, bmp.Width, 1);
+    var data = bmp.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format1bppIndexed);
+
+    try
+    {
+        byte* row = (byte*)data.Scan0;
+        int byteIndex = x >> 3;
+        int bitIndex = 7 - (x & 7);
+
+        return ((row[byteIndex] >> bitIndex) & 1) != 0;
+    }
+    finally
+    {
+        bmp.UnlockBits(data);
+    }
+}
+
+bool bit = GetBit1bpp(image1, imgX, imgY);
+
+labelCoord.Text = $"X={imgX}, Y={imgY}, Val={(bit ? 1 : 0)}";
+
+
+
+
 private void SetZoomAtPoint(int newZoom, int mouseX, int mouseY)
 {
     if (image == null) return;
