@@ -1,3 +1,72 @@
+public Form1()
+{
+    InitializeComponent();
+
+    panelView.TabStop = true;                 // これが重要
+    panelView.MouseEnter += (_, __) => panelView.Focus();
+    panelView.MouseDown  += (_, __) => panelView.Focus();
+
+    panelView.MouseWheel += panelView_MouseWheel;
+}
+
+private void panelView_MouseWheel(object sender, MouseEventArgs e)
+{
+    if (image == null) return;
+
+    // 1ノッチあたりの移動量（好みで調整）
+    int step = 120; // e.Deltaは通常±120単位
+    int lines = e.Delta / step; // 上: +1, 下: -1
+
+    // 画像座標で何px動かすか（ズーム倍率を考慮）
+    // 「画面上で一定量」動かしたいなら /zoom は入れない
+    int movePx = 200 / zoom;  // 調整ポイント（例：200px相当）
+    if (movePx < 1) movePx = 1;
+
+    bool ctrl = (Control.ModifierKeys & Keys.Control) != 0;
+
+    if (ctrl)
+        viewX -= lines * movePx;   // Ctrl+Wheel: 水平（好みで符号調整）
+    else
+        viewY -= lines * movePx;   // Wheel: 垂直
+
+    ClampView();
+    UpdateScrollbarsFromView();
+    panelView.Invalidate();
+}
+private void ClampView()
+{
+    if (image == null) return;
+
+    int viewWImg = Math.Max(1, panelView.ClientSize.Width / zoom);
+    int viewHImg = Math.Max(1, panelView.ClientSize.Height / zoom);
+
+    int maxX = Math.Max(0, image.Width  - viewWImg);
+    int maxY = Math.Max(0, image.Height - viewHImg);
+
+    viewX = Clamp(viewX, 0, maxX);
+    viewY = Clamp(viewY, 0, maxY);
+}
+private void UpdateScrollbarsFromView()
+{
+    if (image == null) return;
+
+    updatingScrollbars = true;
+    try
+    {
+        hScroll.Value = ImageXToScroll(viewX);
+        vScroll.Value = ImageYToScroll(viewY);
+    }
+    finally
+    {
+        updatingScrollbars = false;
+    }
+}
+
+
+
+
+
+
 using System.Drawing;
 using System.Drawing.Imaging;
 
