@@ -1,3 +1,114 @@
+using System.Drawing;
+using System.Drawing.Imaging;
+
+private Bitmap view8;
+
+private void EnsureView8(int w, int h)
+{
+    if (view8 != null && view8.Width == w && view8.Height == h) return;
+
+    view8?.Dispose();
+    view8 = new Bitmap(w, h, PixelFormat.Format8bppIndexed);
+
+    // グレーパレット（0..255）
+    var pal = view8.Palette;
+    for (int i = 0; i < 256; i++)
+        pal.Entries[i] = Color.FromArgb(i, i, i);
+    view8.Palette = pal;
+}
+
+private static void Expand1bppTo8bpp(Bitmap src1, Rectangle srcRect, Bitmap dst8)
+{
+    // src1: Format1bppIndexed, dst8: Format8bppIndexed, dst8サイズ==srcRect.Size
+    var dstRect = new Rectangle(0, 0, srcRect.Width, srcRect.Height);
+
+    var sData = src1.LockBits(srcRect, ImageLockMode.ReadOnly, PixelFormat.Format1bppIndexed);
+    var dData = dst8.LockBits(dstRect, ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+
+    try
+    {
+        unsafe
+        {
+            byte* sBase = (byte*)sData.Scan0;
+            byte* dBase = (byte*)dData.Scan0;
+
+            int w = srcRect.Width;
+            int h = srcRect.Height;
+
+            // srcRect.X は LockBits の矩形で切られているので、各行先頭は bit0 から始まる
+            // つまり、ここでは "行内ビットオフセット" を気にしなくてOK（srcRectで切っているため）
+            // ただし、GDI+のLockBitsは矩形切り出しでも Scan0 はその矩形の先頭ビットを指す（一般にOK）
+
+            for (int y = 0; y < h; y++)
+            {
+                byte* sp = sBase + y * sData.Stride;
+                byte* dp = dBase + y * dData.Stride;
+
+                int x = 0;
+                int byteCount = (w + 7) / 8;
+
+                for (int i = 0; i < byteCount; i++)
+                {
+                    byte b = sp[i];
+
+                    // 1bppは通常 MSBが左（bit7→x）
+                    // x..x+7 を埋める（最後の端は幅で止める）
+                    for (int bit = 7; bit >= 0 && x < w; bit--)
+                    {
+                        dp[x] = ((b >> bit) & 1) != 0 ? (byte)255 : (byte)0;
+                        x++;
+                    }
+                }
+            }
+        }
+    }
+    finally
+    {
+        src1.UnlockBits(sData);
+        dst8.UnlockBits(dData);
+    }
+}
+
+private Bitmap image1; // Format1bppIndexed
+private int zoom = 1;
+private int viewX = 0, viewY = 0;
+
+private void panelView_Paint(object sender, PaintEventArgs e)
+{
+    if (image1 == null) return;
+
+    // 可視領域（画像座標での幅高さ）
+    int viewWImg = Math.Max(1, panelView.ClientSize.Width / zoom);
+    int viewHImg = Math.Max(1, panelView.ClientSize.Height / zoom);
+
+    int maxX = Math.Max(0, image1.Width - viewWImg);
+    int maxY = Math.Max(0, image1.Height - viewHImg);
+    viewX = Clamp(viewX, 0, maxX);
+    viewY = Clamp(viewY, 0, maxY);
+
+    var src = new Rectangle(viewX, viewY,
+        Math.Min(viewWImg, image1.Width - viewX),
+        Math.Min(viewHImg, image1.Height - viewY));
+
+    EnsureView8(src.Width, src.Height);
+
+    // ★ 1bpp→8bppに展開（ここで32000超え問題を回避しやすい）
+    Expand1bppTo8bpp(image1, src, view8);
+
+    // 描画（整数倍 + 最近傍）
+    e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+    e.Graphics.PixelOffsetMode   = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+    e.Graphics.SmoothingMode     = System.Drawing.Drawing2D.SmoothingMode.None;
+    e.Graphics.CompositingQuality= System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+
+    var dst = new Rectangle(0, 0, src.Width * zoom, src.Height * zoom);
+    e.Graphics.DrawImage(view8, dst, new Rectangle(0, 0, src.Width, src.Height), GraphicsUnit.Pixel);
+}
+
+
+
+
+
 private void panelView_Paint(object sender, PaintEventArgs e)
 {
     if (image == null) return;
